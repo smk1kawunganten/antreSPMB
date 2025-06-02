@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Antrian SPMB</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .table-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .pagination {
+      margin-top: 20px;
+      justify-content: center;
+    }
+    .verified {
+      background-color: #d4edda !important;
+    }
+    .rejected {
+      background-color: #f8d7da !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="table-container">
+      <h2 class="text-center mb-4">Data Antrian Verifikasi Berkas SPMB</h2>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan Nama/NISN/NIK...">
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-success" onclick="exportToExcel()">Export ke Excel</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped" id="dataTable">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>No Antrian</th>
+              <th>NISN</th>
+              <th>Nama</th>
+              <th>No Telp</th>
+              <th>NIK</th>
+              <th>Lulusan</th>
+              <th>Tanggal</th>
+              <th>Jam Datang</th>
+              <th>Status Verifikasi</th>
+              <th>Aksi</th>
+              <th>Verifikasi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+          </tbody>
+        </table>
+      </div>
+
+      <nav>
+        <ul class="pagination" id="pagination">
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Modal Edit -->
+  <div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Data</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <input type="hidden" id="editId">
+            <div class="mb-3">
+              <label for="editNISN" class="form-label">NISN</label>
+              <input type="text" class="form-control" id="editNISN" required>
+            </div>
+            <div class="mb-3">
+              <label for="editNoTelp" class="form-label">No Telpon</label>
+              <input type="tel" class="form-control" id="editNoTelp" required>
+            </div>
+            <div class="mb-3">
+              <label for="editNIK" class="form-label">NIK</label>
+              <input type="text" class="form-control" id="editNIK" required>
+            </div>
+            <div class="mb-3">
+              <label for="editNama" class="form-label">Nama</label>
+              <input type="text" class="form-control" id="editNama" required>
+            </div>
+            <div class="mb-3">
+              <label for="editLulusan" class="form-label">Lulusan</label>
+              <select class="form-select" id="editLulusan">
+                <option value="2025">2025</option>
+                <option value="Sebelum 2025">Sebelum 2025</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="updateData()">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Verifikasi -->
+  <div class="modal fade" id="vervalModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Verifikasi Data</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="vervalForm">
+            <div class="mb-3">
+              <label class="form-label">No Antrian</label>
+              <input type="text" class="form-control" id="vervalNoAntrian" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">NISN</label>
+              <input type="text" class="form-control" id="vervalNISN" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">NIK</label>
+              <input type="text" class="form-control" id="vervalNIK" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama</label>
+              <input type="text" class="form-control" id="vervalNama" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Lulusan</label>
+              <input type="text" class="form-control" id="vervalLulusan" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama Sekolah</label>
+              <input type="text" class="form-control" id="vervalSekolah" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Status Verifikasi</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="vervalStatus" id="vervalStatusVerif" value="verifikasi" checked>
+                <label class="form-check-label" for="vervalStatusVerif">Verifikasi</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="vervalStatus" id="vervalStatusTolak" value="tolak">
+                <label class="form-check-label" for="vervalStatusTolak">Tolak Verifikasi</label>
+              </div>
+            </div>
+            <div class="mb-3" id="alasanTolakDiv" style="display: none;">
+              <label class="form-label">Alasan Ditolak</label>
+              <textarea class="form-control" id="vervalAlasanTolak" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama Verifikator</label>
+              <select class="form-select" id="vervalVerifikator" required>
+                <option value="">Pilih Verifikator</option>
+                <option value="Wendra Bagas Saputra">Wendra Bagas Saputra</option>
+                <option value="Galih Setiyo Budhi">Galih Setiyo Budhi</option>
+                <option value="Vindan Anggit Garnida, S.Kom">Vindan Anggit Garnida, S.Kom</option>
+                <option value="Ahmad Hidayat">Ahmad Hidayat</option>
+                <option value="Ratri Dwi Purama, S.Pd">Ratri Dwi Purama, S.Pd</option>
+                <option value="Aris Susanto, S.Pd">Aris Susanto, S.Pd</option>
+                <option value="Nurul Ikhsaniatun, S.Pd">Nurul Ikhsaniatun, S.Pd</option>
+                <option value="Firman Nur Hidayatulloh, S.Pd.">Firman Nur Hidayatulloh, S.Pd.</option>
+                <option value="Teguh Riyanto, S. Pd">Teguh Riyanto, S. Pd</option>
+                <option value="Teguh Heru Widiyanto, S.Pd">Teguh Heru Widiyanto, S.Pd</option>
+                <option value="Novi Handayani, S. Pd">Novi Handayani, S. Pd</option>
+                <option value="Agus Riyanto, S. Pd">Agus Riyanto, S. Pd</option>
+                <option value="Yunis Ariyadi, S. Pd">Yunis Ariyadi, S. Pd</option>
+                <option value="Septiana Sulhamid, S.Pd">Septiana Sulhamid, S.Pd</option>
+                <option value="Muhalim, S. Kom">Muhalim, S. Kom</option>
+                <option value="Siti Fatonah, S.T">Siti Fatonah, S.T</option>
+                <option value="Majid Aziz N, S. Pd">Majid Aziz N, S. Pd</option>
+                <option value="Juni Setyo Utomo, S. Pd">Juni Setyo Utomo, S. Pd</option>
+                <option value="Imam Sudrajat, S. Pd">Imam Sudrajat, S. Pd</option>
+                <option value="Andri Juni Prasetyo, S.Pd.">Andri Juni Prasetyo, S.Pd.</option>
+                <option value="Jodi Sugiarto, S.Pd">Jodi Sugiarto, S.Pd</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="submitVerval()">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWUgXfvgN5acv57hPeabMnvW-VvhME1sI",
+      authDomain: "antrispmb.firebaseapp.com", 
+      projectId: "antrispmb",
+      storageBucket: "antrispmb.firebasestorage.app",
+      messagingSenderId: "1031232401581",
+      appId: "1:1031232401581:web:75651fb5aaa1005891d624"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    const vervalModal = new bootstrap.Modal(document.getElementById('vervalModal'));
+
+    let allData = [];
+    let verificationData = [];
+    const itemsPerPage = 15;
+    let currentPage = 1;
+
+    // Load data
+    async function loadData() {
+      // Get verification data first
+      const verificationSnapshot = await db.collection('verifikasi').get();
+      verificationData = verificationSnapshot.docs.map(doc => doc.data());
+
+      // Then get antrian data
+      const antrianSnapshot = await db.collection('antrian').orderBy('antrian', 'asc').get();
+      allData = antrianSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      renderData();
+    }
+
+    // Search function
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      const filteredData = allData.filter(item => 
+        item.Nama.toLowerCase().includes(searchTerm) ||
+        item.NISN.toLowerCase().includes(searchTerm) ||
+        item.NIK.toLowerCase().includes(searchTerm)
+      );
+      renderData(filteredData);
+    });
+
+    // Show/hide alasan tolak based on radio selection
+    document.querySelectorAll('input[name="vervalStatus"]').forEach((radio) => {
+      radio.addEventListener('change', function() {
+        document.getElementById('alasanTolakDiv').style.display = 
+          this.value === 'tolak' ? 'block' : 'none';
+      });
+    });
+
+    // Export to Excel function
+    function exportToExcel() {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      
+      // Add headers
+      csvContent += "No,No Antrian,NISN,Nama,No Telp,NIK,Lulusan,Tanggal,Jam Datang,Status Verifikasi\n";
+      
+      // Add data rows
+      allData.forEach((item, index) => {
+        const verificationStatus = getVerificationStatus(item.NISN) || '-';
+        const row = [
+          index + 1,
+          item.antrian,
+          item.NISN,
+          item.Nama,
+          item.NoTelp,
+          item.NIK,
+          item.Lulusan,
+          new Date(item.Tanggal).toLocaleDateString('id-ID'),
+          item.jamDatang,
+          verificationStatus
+        ].join(",");
+        csvContent += row + "\n";
+      });
+      
+      // Create download link
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "data_antrian.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Get verification status for NISN
+    function getVerificationStatus(NISN) {
+      const verifications = verificationData.filter(v => v.NISN === NISN);
+      if (verifications.length === 0) return null;
+      
+      // Get the latest verification by date
+      const latestVerification = verifications.reduce((latest, current) => {
+        if (!latest) return current;
+        return new Date(current.tanggalVerval) > new Date(latest.tanggalVerval) ? current : latest;
+      });
+
+      return latestVerification.status;
+    }
+
+    // Render data with pagination
+    function renderData(data = allData) {
+      const tableBody = document.getElementById('tableBody');
+      const pagination = document.getElementById('pagination');
+      tableBody.innerHTML = '';
+      pagination.innerHTML = '';
+
+      const totalPages = Math.ceil(data.length / itemsPerPage);
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const paginatedData = data.slice(start, end);
+
+      paginatedData.forEach((item, index) => {
+        const verificationStatus = getVerificationStatus(item.NISN);
+        const row = document.createElement('tr');
+        
+        // Add class based on verification status
+        if (verificationStatus === 'verifikasi') {
+          row.classList.add('verified');
+        } else if (verificationStatus === 'tolak') {
+          row.classList.add('rejected');
+        }
+        
+        row.innerHTML = `
+          <td>${start + index + 1}</td>
+          <td>${item.antrian}</td>
+          <td>${item.NISN}</td>
+          <td>${item.Nama}</td>
+          <td>${item.NoTelp}</td>
+          <td>${item.NIK}</td>
+          <td>${item.Lulusan}</td>
+          <td>${new Date(item.Tanggal).toLocaleDateString('id-ID')}</td>
+          <td>${item.jamDatang}</td>
+          <td>${verificationStatus || '-'}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="editData('${item.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteData('${item.id}')">Hapus</button>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-success" onclick="showVerval('${item.id}')">Verval</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+
+      // Generate pagination
+      if (totalPages > 1) {
+        for (let i = 1; i <= totalPages; i++) {
+          const li = document.createElement('li');
+          li.className = `page-item ${currentPage === i ? 'active' : ''}`;
+          li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+          pagination.appendChild(li);
+        }
+      }
+    }
+
+    function changePage(page) {
+      currentPage = page;
+      renderData();
+    }
+
+    // Show verval modal
+    function showVerval(id) {
+      const item = allData.find(x => x.id === id);
+      document.getElementById('vervalNoAntrian').value = item.antrian;
+      document.getElementById('vervalNISN').value = item.NISN;
+      document.getElementById('vervalNIK').value = item.NIK;
+      document.getElementById('vervalNama').value = item.Nama;
+      document.getElementById('vervalLulusan').value = item.Lulusan;
+      document.getElementById('vervalSekolah').value = '';
+      document.getElementById('vervalStatusVerif').checked = true;
+      document.getElementById('alasanTolakDiv').style.display = 'none';
+      document.getElementById('vervalAlasanTolak').value = '';
+      document.getElementById('vervalVerifikator').value = '';
+      vervalModal.show();
+    }
+
+    // Submit verval
+    function submitVerval() {
+      const vervalData = {
+        noAntrian: document.getElementById('vervalNoAntrian').value,
+        NISN: document.getElementById('vervalNISN').value,
+        NIK: document.getElementById('vervalNIK').value,
+        Nama: document.getElementById('vervalNama').value,
+        Lulusan: document.getElementById('vervalLulusan').value,
+        namaSekolah: document.getElementById('vervalSekolah').value,
+        status: document.querySelector('input[name="vervalStatus"]:checked').value,
+        alasanTolak: document.getElementById('vervalAlasanTolak').value,
+        namaVerifikator: document.getElementById('vervalVerifikator').value,
+        tanggalVerval: new Date().toISOString()
+      };
+
+      if (!vervalData.namaSekolah) {
+        alert('Nama Sekolah harus diisi!');
+        return;
+      }
+
+      if (vervalData.status === 'tolak' && !vervalData.alasanTolak) {
+        alert('Alasan penolakan harus diisi!');
+        return;
+      }
+
+      if (!vervalData.namaVerifikator) {
+        alert('Nama Verifikator harus dipilih!');
+        return;
+      }
+
+      db.collection('verifikasi').add(vervalData)
+        .then(() => {
+          vervalModal.hide();
+          window.location.href = 'verifikasi.html';
+        })
+        .catch((error) => {
+          alert('Error: ' + error.message);
+        });
+    }
+
+    // Edit data
+    function editData(id) {
+      db.collection('antrian').doc(id).get().then((doc) => {
+        const data = doc.data();
+        document.getElementById('editId').value = id;
+        document.getElementById('editNISN').value = data.NISN;
+        document.getElementById('editNoTelp').value = data.NoTelp;
+        document.getElementById('editNIK').value = data.NIK;
+        document.getElementById('editNama').value = data.Nama;
+        document.getElementById('editLulusan').value = data.Lulusan;
+        editModal.show();
+      });
+    }
+
+    // Update data
+    function updateData() {
+      const id = document.getElementById('editId').value;
+      const data = {
+        NISN: document.getElementById('editNISN').value,
+        NoTelp: document.getElementById('editNoTelp').value,
+        NIK: document.getElementById('editNIK').value,
+        Nama: document.getElementById('editNama').value,
+        Lulusan: document.getElementById('editLulusan').value
+      };
+
+      db.collection('antrian').doc(id).update(data).then(() => {
+        editModal.hide();
+        loadData();
+        alert('Data berhasil diupdate!');
+      }).catch((error) => {
+        alert('Error: ' + error.message);
+      });
+    }
+
+    // Delete data
+    function deleteData(id) {
+      if(confirm('Yakin ingin menghapus data ini?')) {
+        db.collection('antrian').doc(id).delete().then(() => {
+          loadData();
+          alert('Data berhasil dihapus!');
+        }).catch((error) => {
+          alert('Error: ' + error.message);
+        });
+      }
+    }
+
+    // Load initial data
+    loadData();
+  </script>
+</body>
+</html>

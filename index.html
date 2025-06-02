@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPMB Antrian Verifikasi (Firebase)</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .form-container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .form-label {
+      font-weight: 500;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .modal-body {
+      text-align: center;
+    }
+    .queue-number {
+      font-size: 48px;
+      font-weight: bold;
+      color: #0d6efd;
+      margin: 20px 0;
+    }
+    .queue-details {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+    .input-feedback {
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .is-invalid ~ .input-feedback {
+      color: #dc3545;
+    }
+    .is-valid ~ .input-feedback {
+      color: #198754;
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 200px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-container">
+      <img src="logo.png" alt="Logo" class="logo">
+      <h2 class="text-center mb-4">Daftar Antrian Verifikasi Berkas SPMB</h2>
+      <form id="queueForm">
+        <div class="mb-3">
+          <label for="NISN" class="form-label">NISN</label>
+          <input type="text" class="form-control" id="NISN" required maxlength="10" oninput="validateNISN(this)">
+          <div class="input-feedback"></div>
+        </div>
+        <div class="mb-3">
+          <label for="NoTelp" class="form-label">No Telpon</label>
+          <input type="tel" class="form-control" id="NoTelp" required>
+        </div>
+        <div class="mb-3">
+          <label for="NIK" class="form-label">NIK</label>
+          <input type="text" class="form-control" id="NIK" required maxlength="16" oninput="validateNIK(this)">
+          <div class="input-feedback"></div>
+        </div>
+        <div class="mb-3">
+          <label for="Nama" class="form-label">Nama</label>
+          <input type="text" class="form-control" id="Nama" required>
+        </div>
+        <div class="mb-3">
+          <label for="Lulusan" class="form-label">Lulusan</label>
+          <select class="form-select" id="Lulusan">
+            <option value="2025">2025</option>
+            <option value="Sebelum 2025">Sebelum 2025</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label for="Tanggal" class="form-label">Tanggal Antrean</label>
+          <input type="date" class="form-control" id="Tanggal" required min="2025-06-02" max="2025-06-12">
+        </div>
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>Daftar</button>
+        </div>
+      </form>
+      <div id="status" class="alert d-none"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="queueModal" tabindex="-1" aria-labelledby="queueModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="queueModalLabel">Informasi Antrian (Mohon di screenshot)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <img src="logo.png" alt="Logo" class="logo mb-3" style="display: block; margin: 0 auto; max-width: 150px;">    
+          <div class="queue-number" id="modalQueueNumber"></div>
+          <div class="queue-details" id="modalDate"></div>
+          <div class="queue-details" id="modalTime"></div>
+          <div class="queue-details text-danger" id="modalWarning"></div>
+          <div class="queue-details text-info">
+            <strong>Catatan Penting:</strong>
+            <ul>
+              <li>Mohon hadir 30 menit sebelum jam yang ditentukan</li>
+              <li>Jam kedatangan bisa maju atau mundur dari jadwal yang diberikan</li>
+              <li>Tetap siap di lokasi minimal 30 menit sebelum jadwal untuk mengantisipasi perubahan</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script>
+    // TODO: Ganti dengan konfigurasi Firebase Anda
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWUgXfvgN5acv57hPeabMnvW-VvhME1sI",
+      authDomain: "antrispmb.firebaseapp.com",
+      projectId: "antrispmb",
+      storageBucket: "antrispmb.firebasestorage.app",
+      messagingSenderId: "1031232401581",
+      appId: "1:1031232401581:web:75651fb5aaa1005891d624"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const form = document.getElementById('queueForm');
+    const status = document.getElementById('status');
+    const queueModal = new bootstrap.Modal(document.getElementById('queueModal'));
+    const submitBtn = document.getElementById('submitBtn');
+
+    function validateNISN(input) {
+      const feedback = input.nextElementSibling;
+      const value = input.value.replace(/\D/g, '');
+      input.value = value;
+
+      if (value.length === 0) {
+        input.classList.remove('is-valid', 'is-invalid');
+        feedback.textContent = '';
+      } else if (value.length !== 10) {
+        input.classList.remove('is-valid');
+        input.classList.add('is-invalid');
+        feedback.textContent = 'NISN harus 10 digit';
+      } else {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        feedback.textContent = 'Format NISN valid';
+      }
+      validateForm();
+    }
+
+    function validateNIK(input) {
+      const feedback = input.nextElementSibling;
+      const value = input.value.replace(/\D/g, '');
+      input.value = value;
+
+      if (value.length === 0) {
+        input.classList.remove('is-valid', 'is-invalid');
+        feedback.textContent = '';
+      } else if (value.length !== 16) {
+        input.classList.remove('is-valid');
+        input.classList.add('is-invalid');
+        feedback.textContent = 'NIK harus 16 digit';
+      } else {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        feedback.textContent = 'Format NIK valid';
+      }
+      validateForm();
+    }
+
+    function validateForm() {
+      const nisn = document.getElementById('NISN');
+      const nik = document.getElementById('NIK');
+      const allValid = nisn.value.length === 10 && nik.value.length === 16;
+      submitBtn.disabled = !allValid;
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      status.textContent = 'Memproses...';
+      status.classList.remove('d-none', 'alert-success', 'alert-danger');
+      status.classList.add('alert-info');
+
+      const NISN = document.getElementById('NISN').value.trim();
+      const NoTelp = document.getElementById('NoTelp').value.trim();
+      const NIK = document.getElementById('NIK').value.trim();
+      const Nama = document.getElementById('Nama').value.trim();
+      const Lulusan = document.getElementById('Lulusan').value;
+      const Tanggal = document.getElementById('Tanggal').value; // 'YYYY-MM-DD'
+
+      // Cek tanggal yang tidak tersedia (6 dan 9 Juni)
+      const selectedDate = new Date(Tanggal);
+      const date = selectedDate.getDate();
+      if (date === 6 || date === 9) {
+        status.textContent = 'Tanggal ini tidak tersedia untuk antrian.';
+        status.classList.remove('alert-info');
+        status.classList.add('alert-warning');
+        return;
+      }
+
+      // Cek weekend
+      const d = new Date(Tanggal);
+      const day = d.getDay();
+      if (day === 0 || day === 6) {
+        status.textContent = 'Pendaftaran hanya Senin–Jumat.';
+        status.classList.remove('alert-info');
+        status.classList.add('alert-warning');
+        return;
+      }
+
+      try {
+        // Query semua antrean pada tanggal tersebut
+        const snapshot = await db.collection('antrian')
+          .where('Tanggal', '==', Tanggal)
+          .get();
+        const entries = snapshot.docs;
+        
+        // Cek duplikasi NISN
+        const existingRegistration = entries.find(doc => doc.data().NISN === NISN);
+        if (existingRegistration) {
+          const data = existingRegistration.data();
+          document.getElementById('modalQueueNumber').textContent = `Nomor Antrian: ${data.antrian}`;
+          document.getElementById('modalDate').textContent = `Tanggal: ${new Date(data.Tanggal).toLocaleDateString('id-ID', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}`;
+          document.getElementById('modalTime').textContent = `Jam Kedatangan: ${data.jamDatang}`;
+          document.getElementById('modalWarning').textContent = 'Anda sudah mendaftar sebelumnya pada tanggal tersebut';
+          queueModal.show();
+          
+          status.textContent = 'NISN sudah terdaftar di tanggal tersebut.';
+          status.classList.remove('alert-info');
+          status.classList.add('alert-warning');
+          return;
+        }
+
+        // Cek kuota
+        if (entries.length >= 250) {
+          status.textContent = 'Kuota tanggal penuh. Pilih tanggal lain.';
+          status.classList.remove('alert-info');
+          status.classList.add('alert-warning');
+          return;
+        }
+
+        // Hitung antrian & jam datang
+        const antrian = entries.length + 1;
+        const groupSize = 15;
+        const slotDuration = 20;
+        const slotIndex = Math.floor((antrian - 1) / groupSize);
+        const [h, m] = ['08','00'];
+        const time = new Date(Tanggal + `T${h}:${m}`);
+        time.setMinutes(time.getMinutes() + slotIndex * slotDuration);
+        const jamDatang = time.toTimeString().slice(0,5);
+
+        // Simpan ke Firestore
+        await db.collection('antrian').add({
+          NISN, NoTelp, NIK, Nama, Lulusan, Tanggal, antrian, jamDatang, created: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Tampilkan modal dengan informasi antrian
+        document.getElementById('modalQueueNumber').textContent = `Nomor Antrian: ${antrian}`;
+        document.getElementById('modalDate').textContent = `Tanggal: ${new Date(Tanggal).toLocaleDateString('id-ID', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}`;
+        document.getElementById('modalTime').textContent = `Jam Kedatangan: ${jamDatang}`;
+        document.getElementById('modalWarning').textContent = '';
+        queueModal.show();
+
+        status.textContent = `Berhasil mendaftar!`;
+        status.classList.remove('alert-info');
+        status.classList.add('alert-success');
+        form.reset();
+
+        // Reset validasi setelah form di-reset
+        document.getElementById('NISN').classList.remove('is-valid');
+        document.getElementById('NIK').classList.remove('is-valid');
+        document.getElementById('NISN').nextElementSibling.textContent = '';
+        document.getElementById('NIK').nextElementSibling.textContent = '';
+        submitBtn.disabled = true;
+
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Error: ' + err.message;
+        status.classList.remove('alert-info');
+        status.classList.add('alert-danger');
+      }
+    });
+  </script>
+</body>
+</html>

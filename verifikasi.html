@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Verifikasi SPMB</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .table-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .pagination {
+      margin-top: 20px;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="table-container">
+      <h2 class="text-center mb-4">Data Hasil Verifikasi Berkas SPMB</h2>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan Nama/NISN/NIK...">
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-success" onclick="exportToExcel()">Export ke Excel</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped" id="dataTable">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>No Antrian</th>
+              <th>NISN</th>
+              <th>Nama</th>
+              <th>NIK</th>
+              <th>Lulusan</th>
+              <th>Nama Sekolah</th>
+              <th>Status Verifikasi</th>
+              <th>Status</th>
+              <th>Tanggal Verifikasi</th>
+              <th>Verifikator</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+          </tbody>
+        </table>
+      </div>
+
+      <nav>
+        <ul class="pagination" id="pagination">
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Modal Edit -->
+  <div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Data Verifikasi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <input type="hidden" id="editId">
+            <div class="mb-3">
+              <label class="form-label">No Antrian</label>
+              <input type="text" class="form-control" id="editNoAntrian" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">NISN</label>
+              <input type="text" class="form-control" id="editNISN" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">NIK</label>
+              <input type="text" class="form-control" id="editNIK" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama</label>
+              <input type="text" class="form-control" id="editNama" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Lulusan</label>
+              <input type="text" class="form-control" id="editLulusan" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama Sekolah</label>
+              <input type="text" class="form-control" id="editSekolah" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nama Verifikator</label>
+              <input type="text" class="form-control" id="editVerifikator" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Status Verifikasi</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="editStatus" id="editStatusVerif" value="verifikasi">
+                <label class="form-check-label" for="editStatusVerif">Verifikasi</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="editStatus" id="editStatusTolak" value="tolak">
+                <label class="form-check-label" for="editStatusTolak">Tolak Verifikasi</label>
+              </div>
+            </div>
+            <div class="mb-3" id="editAlasanTolakDiv" style="display: none;">
+              <label class="form-label">Alasan Ditolak</label>
+              <textarea class="form-control" id="editAlasanTolak" rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="updateData()">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWUgXfvgN5acv57hPeabMnvW-VvhME1sI",
+      authDomain: "antrispmb.firebaseapp.com",
+      projectId: "antrispmb",
+      storageBucket: "antrispmb.firebasestorage.app", 
+      messagingSenderId: "1031232401581",
+      appId: "1:1031232401581:web:75651fb5aaa1005891d624"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    let allData = [];
+    const itemsPerPage = 15;
+    let currentPage = 1;
+
+    // Load data
+    function loadData() {
+      db.collection('verifikasi').orderBy('tanggalVerval', 'desc').get().then((snapshot) => {
+        allData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        renderData();
+      });
+    }
+
+    // Search function
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      const filteredData = allData.filter(item => 
+        item.Nama.toLowerCase().includes(searchTerm) ||
+        item.NISN.toLowerCase().includes(searchTerm) ||
+        item.NIK.toLowerCase().includes(searchTerm)
+      );
+      renderData(filteredData);
+    });
+
+    // Show/hide alasan tolak based on radio selection
+    document.querySelectorAll('input[name="editStatus"]').forEach((radio) => {
+      radio.addEventListener('change', function() {
+        document.getElementById('editAlasanTolakDiv').style.display = 
+          this.value === 'tolak' ? 'block' : 'none';
+      });
+    });
+
+    // Export to Excel function
+    function exportToExcel() {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      
+      // Add headers
+      csvContent += "No,No Antrian,NISN,Nama,NIK,Lulusan,Nama Sekolah,Status,Tanggal Verifikasi,Verifikator\n";
+      
+      // Add data rows
+      allData.forEach((item, index) => {
+        const row = [
+          index + 1,
+          item.noAntrian,
+          item.NISN,
+          item.Nama,
+          item.NIK,
+          item.Lulusan,
+          item.namaSekolah,
+          item.status,
+          new Date(item.tanggalVerval).toLocaleDateString('id-ID'),
+          item.namaVerifikator
+        ].join(",");
+        csvContent += row + "\n";
+      });
+      
+      // Create download link
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "data_verifikasi.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Render data with pagination
+    function renderData(data = allData) {
+      const tableBody = document.getElementById('tableBody');
+      const pagination = document.getElementById('pagination');
+      tableBody.innerHTML = '';
+      pagination.innerHTML = '';
+
+      const totalPages = Math.ceil(data.length / itemsPerPage);
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const paginatedData = data.slice(start, end);
+
+      paginatedData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const statusClass = item.status === 'verifikasi' ? 'text-success' : 'text-danger';
+        
+        // Determine verification status
+        let verifStatus = 'Belum Diverifikasi';
+        let verifStatusClass = 'text-warning';
+        
+        if (item.status === 'verifikasi') {
+          verifStatus = 'Sudah Diverifikasi';
+          verifStatusClass = 'text-success';
+        } else if (item.status === 'tolak') {
+          verifStatus = 'Verifikasi Ditolak';
+          verifStatusClass = 'text-danger';
+        }
+        
+        row.innerHTML = `
+          <td>${start + index + 1}</td>
+          <td>${item.noAntrian || '-'}</td>
+          <td>${item.NISN || '-'}</td>
+          <td>${item.Nama || '-'}</td>
+          <td>${item.NIK || '-'}</td>
+          <td>${item.Lulusan || '-'}</td>
+          <td>${item.namaSekolah || '-'}</td>
+          <td class="${verifStatusClass}">${verifStatus}</td>
+          <td class="${statusClass}">${item.status ? item.status.toUpperCase() : '-'}</td>
+          <td>${item.tanggalVerval ? new Date(item.tanggalVerval).toLocaleDateString('id-ID') : '-'}</td>
+          <td>${item.namaVerifikator || '-'}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="editData('${item.id}')">Edit</button>
+            <button class="btn btn-sm btn-info" onclick="printData('${item.id}')">Cetak</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+
+      // Generate pagination
+      if (totalPages > 1) {
+        for (let i = 1; i <= totalPages; i++) {
+          const li = document.createElement('li');
+          li.className = `page-item ${currentPage === i ? 'active' : ''}`;
+          li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+          pagination.appendChild(li);
+        }
+      }
+    }
+
+    function changePage(page) {
+      currentPage = page;
+      renderData();
+    }
+
+    // Edit data
+    function editData(id) {
+      const item = allData.find(x => x.id === id);
+      document.getElementById('editId').value = id;
+      document.getElementById('editNoAntrian').value = item.noAntrian;
+      document.getElementById('editNISN').value = item.NISN;
+      document.getElementById('editNIK').value = item.NIK;
+      document.getElementById('editNama').value = item.Nama;
+      document.getElementById('editLulusan').value = item.Lulusan;
+      document.getElementById('editSekolah').value = item.namaSekolah;
+      document.getElementById('editVerifikator').value = item.namaVerifikator || '';
+      
+      if(item.status === 'verifikasi') {
+        document.getElementById('editStatusVerif').checked = true;
+        document.getElementById('editAlasanTolakDiv').style.display = 'none';
+      } else {
+        document.getElementById('editStatusTolak').checked = true;
+        document.getElementById('editAlasanTolakDiv').style.display = 'block';
+        document.getElementById('editAlasanTolak').value = item.alasanTolak;
+      }
+      
+      editModal.show();
+    }
+
+    // Update data
+    function updateData() {
+      const id = document.getElementById('editId').value;
+      const status = document.querySelector('input[name="editStatus"]:checked').value;
+      
+      const data = {
+        namaSekolah: document.getElementById('editSekolah').value,
+        namaVerifikator: document.getElementById('editVerifikator').value,
+        status: status,
+        alasanTolak: status === 'tolak' ? document.getElementById('editAlasanTolak').value : '',
+        tanggalVerval: new Date().toISOString()
+      };
+
+      if (!data.namaSekolah) {
+        alert('Nama Sekolah harus diisi!');
+        return;
+      }
+
+      if (!data.namaVerifikator) {
+        alert('Nama Verifikator harus diisi!');
+        return;
+      }
+
+      if (status === 'tolak' && !data.alasanTolak) {
+        alert('Alasan penolakan harus diisi!');
+        return;
+      }
+
+      db.collection('verifikasi').doc(id).update(data).then(() => {
+        editModal.hide();
+        loadData();
+        alert('Data verifikasi berhasil diupdate!');
+      }).catch((error) => {
+        alert('Error: ' + error.message);
+      });
+    }
+
+    // Print data
+    function printData(id) {
+      const item = allData.find(x => x.id === id);
+      const printWindow = window.open('', '', 'width=800,height=1200');
+      
+      const content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Berita Acara Verifikasi</title>
+          <style>
+            @page { size: A4; margin: 10mm; }
+            body { 
+              font-family: Arial, sans-serif;
+              line-height: 1.5;
+              margin: 0;
+              padding: 20px;
+            }
+            .title {
+              font-weight: bold;
+              text-align: center;
+              margin: 20px 0;
+            }
+            .content {
+              margin: 20px 0;
+              text-align: justify;
+            }
+            .pihak {
+              margin: 15px 0;
+            }
+            .pihak-label {
+              display: inline-block;
+              width: 120px;
+            }
+            .table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            .table th, .table td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+            }
+            .signatures {
+              margin-top: 20px;
+              display: flex;
+              justify-content: space-around;
+              text-align: center;
+            }
+            .signature-box {
+              width: 45%;
+            }
+            .signature-line {
+              margin-top: 60px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="title">
+            <div>BERITA ACARA VERIFIKASI DAN VALIDASI</div>
+            <div>PENERIMAAN PESERTA DIDIK BARU</div>
+            <div>SMK DAN SMK NEGERI PROVINSI JAWA TENGAH 2025/2026</div>
+          </div>
+
+          <div class="content">
+            Pada Hari ini ${new Date(item.tanggalVerval).toLocaleDateString('id-ID', {weekday: 'long'})}, 
+            tanggal ${new Date(item.tanggalVerval).toLocaleDateString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}, 
+            kami bertanda tangan dibawah ini:
+          </div>
+
+          <div class="pihak">
+            <div><span class="pihak-label">Nama</span>: ${item.namaVerifikator}</div>
+            <div><span class="pihak-label">NIP</span>: -</div>
+            <div><span class="pihak-label">Unit Kerja</span>: SMKN 1 Kawunganten</div>
+            <div><span class="pihak-label">Jabatan</span>: Tim Verifikator</div>
+            <div style="font-weight:bold;margin-top:10px">Selanjutnya disebut PIHAK PERTAMA</div>
+          </div>
+
+          <div class="pihak">
+            <div><span class="pihak-label">Nama</span>: ${item.Nama}</div>
+            <div><span class="pihak-label">NISN</span>: ${item.NISN}</div>
+            <div><span class="pihak-label">NIK</span>: ${item.NIK}</div>
+            <div><span class="pihak-label">Asal Sekolah</span>: ${item.namaSekolah}</div>
+            <div><span class="pihak-label">Tahun Lulus</span>: ${item.Lulusan}</div>
+            <div style="font-weight:bold;margin-top:10px">Selanjutnya disebut PIHAK KEDUA</div>
+          </div>
+
+          <div class="content">
+            PIHAK PERTAMA telah melakukan Verifikasi dan Validasi berkas dan data dan/atau dokumen persyaratan SPMB SMA Negeri dan SMK Negeri 
+            Provinsi Jawa Tengah Tahun Ajaran 2025/2026 dan PIHAK KEDUA menyetujui hasil Verifikasi dan Validasi dari PIHAK PERTAMA, berupa terlampir:
+          </div>
+
+          <table class="table">
+            <tr>
+              <th>Keterangan</th>
+              <th>Alasan</th>
+            </tr>
+            <tr>
+              <td>${item.status.toUpperCase()}</td>
+              <td>${item.status === 'tolak' ? item.alasanTolak : '-'}</td>
+            </tr>
+          </table>
+
+          <div class="content">
+            Demikian Berita Acara Verifikasi dan Validasi ini dibuat oleh kedua belah pihak. Sejak ditandatanganinya berita acara ini, 
+            maka PIHAK KEDUA menyetujui dan bertanggungjawab penuh terhadap data dan/atau dokumen persyaratan SPMB SMA Negeri dan SMK Negeri 
+            Provinsi Jawa Tengah Tahun Ajaran 2025/2026.
+          </div>
+
+          <div class="signatures">
+            <div class="signature-box">
+              <div>Pihak Pertama</div>
+              <div class="signature-line">${item.namaVerifikator}</div>
+              <div>NIP. -</div>
+            </div>
+            <div class="signature-box">
+              <div>Pihak Kedua</div>
+              <div class="signature-line">${item.Nama}</div>
+            </div>
+          </div>
+
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(content);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+
+    // Load initial data
+    loadData();
+  </script>
+</body>
+</html>
