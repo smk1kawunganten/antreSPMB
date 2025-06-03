@@ -31,13 +31,15 @@
 <body>
   <div class="container">
     <div class="table-container">
-      <h2 class="text-center mb-4">Data Antrian Verifikasi Berkas SPMB</h2>
+      <h2 class="text-center mb-4">Data Antrian SPMB</h2>
       
       <div class="row mb-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan Nama/NISN/NIK...">
         </div>
-        <div class="col-md-6 text-end">
+        <div class="col-md-8 text-end">
+          <a href="index.html" class="btn btn-primary me-2">Daftar Antri</a>
+          <button class="btn btn-info me-2" onclick="showVerified()">Lihat Data Terverifikasi</button>
           <button class="btn btn-success" onclick="exportToExcel()">Export ke Excel</button>
         </div>
       </div>
@@ -419,7 +421,140 @@
       db.collection('verifikasi').add(vervalData)
         .then(() => {
           vervalModal.hide();
-          window.location.href = 'verifikasi.html';
+          
+          // Print document before redirecting
+          const printWindow = window.open('', '', 'width=800,height=1200');
+          
+          const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Berita Acara Verifikasi</title>
+              <style>
+                @page { size: A4; margin: 10mm; }
+                body { 
+                  font-family: Arial, sans-serif;
+                  line-height: 1.5;
+                  margin: 0;
+                  padding: 20px;
+                }
+                .title {
+                  font-weight: bold;
+                  text-align: center;
+                  margin: 20px 0;
+                }
+                .content {
+                  margin: 20px 0;
+                  text-align: justify;
+                }
+                .pihak {
+                  margin: 15px 0;
+                }
+                .pihak-label {
+                  display: inline-block;
+                  width: 120px;
+                }
+                .table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 20px 0;
+                }
+                .table th, .table td {
+                  border: 1px solid black;
+                  padding: 8px;
+                  text-align: center;
+                }
+                .signatures {
+                  margin-top: 20px;
+                  display: flex;
+                  justify-content: space-around;
+                  text-align: center;
+                }
+                .signature-box {
+                  width: 45%;
+                }
+                .signature-line {
+                  margin-top: 60px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="title">
+                <div>BERITA ACARA VERIFIKASI DAN VALIDASI</div>
+                <div>PENERIMAAN PESERTA DIDIK BARU</div>
+                <div>SMK DAN SMK NEGERI PROVINSI JAWA TENGAH 2025/2026</div>
+              </div>
+
+              <div class="content">
+                Pada Hari ini ${new Date(vervalData.tanggalVerval).toLocaleDateString('id-ID', {weekday: 'long'})}, 
+                tanggal ${new Date(vervalData.tanggalVerval).toLocaleDateString('id-ID', {day: 'numeric', month:'long', year:'numeric'})}, 
+                kami bertanda tangan dibawah ini:
+              </div>
+
+              <div class="pihak">
+                <div><span class="pihak-label">Nama</span>: ${vervalData.namaVerifikator}</div>
+                <div><span class="pihak-label">NIP</span>: -</div>
+                <div><span class="pihak-label">Unit Kerja</span>: SMKN 1 Kawunganten</div>
+                <div><span class="pihak-label">Jabatan</span>: Tim Verifikator</div>
+                <div style="font-weight:bold;margin-top:10px">Selanjutnya disebut PIHAK PERTAMA</div>
+              </div>
+
+              <div class="pihak">
+                <div><span class="pihak-label">Nama</span>: ${vervalData.Nama}</div>
+                <div><span class="pihak-label">NISN</span>: ${vervalData.NISN}</div>
+                <div><span class="pihak-label">NIK</span>: ${vervalData.NIK}</div>
+                <div><span class="pihak-label">Asal Sekolah</span>: ${vervalData.namaSekolah}</div>
+                <div><span class="pihak-label">Tahun Lulus</span>: ${vervalData.Lulusan}</div>
+                <div style="font-weight:bold;margin-top:10px">Selanjutnya disebut PIHAK KEDUA</div>
+              </div>
+
+              <div class="content">
+                PIHAK PERTAMA telah melakukan Verifikasi dan Validasi berkas dan data dan/atau dokumen persyaratan SPMB SMA Negeri dan SMK Negeri 
+                Provinsi Jawa Tengah Tahun Ajaran 2025/2026 dan PIHAK KEDUA menyetujui hasil Verifikasi dan Validasi dari PIHAK PERTAMA, berupa terlampir:
+              </div>
+
+              <table class="table">
+                <tr>
+                  <th>Keterangan</th>
+                  <th>Alasan</th>
+                </tr>
+                <tr>
+                  <td>${vervalData.status.toUpperCase()}</td>
+                  <td>${vervalData.status === 'tolak' ? vervalData.alasanTolak : '-'}</td>
+                </tr>
+              </table>
+
+              <div class="content">
+                Demikian Berita Acara Verifikasi dan Validasi ini dibuat oleh kedua belah pihak. Sejak ditandatanganinya berita acara ini, 
+                maka PIHAK KEDUA menyetujui dan bertanggungjawab penuh terhadap data dan/atau dokumen persyaratan SPMB SMA Negeri dan SMK Negeri 
+                Provinsi Jawa Tengah Tahun Ajaran 2025/2026.
+              </div>
+
+              <div class="signatures">
+                <div class="signature-box">
+                  <div>Pihak Pertama</div>
+                  <div class="signature-line">${vervalData.namaVerifikator}</div>
+                  <div>NIP. -</div>
+                </div>
+                <div class="signature-box">
+                  <div>Pihak Kedua</div>
+                  <div class="signature-line">${vervalData.Nama}</div>
+                </div>
+              </div>
+
+            </body>
+            </html>
+          `;
+          
+          printWindow.document.write(content);
+          printWindow.document.close();
+          printWindow.focus();
+          
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+            window.location.href = 'verifikasi.html';
+          }, 250);
         })
         .catch((error) => {
           alert('Error: ' + error.message);
@@ -471,9 +606,14 @@
         });
       }
     }
+    // Show verified data
+    function showVerified() {
+      window.location.href = 'verifikasi.html';
+    }
 
     // Load initial data
     loadData();
   </script>
 </body>
+</html>
 </html>

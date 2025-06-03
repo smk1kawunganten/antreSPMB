@@ -7,18 +7,72 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      background-color: #f8f9fa;
+      background-color: #ffffff;
       padding: 20px;
     }
     .table-container {
       background: white;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      box-shadow: 0 0 15px rgba(220,53,69,0.1);
+      border: 1px solid #dc3545;
     }
     .pagination {
       margin-top: 20px;
       justify-content: center;
+    }
+    .btn-primary {
+      background-color: #dc3545;
+      border-color: #dc3545;
+    }
+    .btn-primary:hover {
+      background-color: #bb2d3b;
+      border-color: #bb2d3b;
+    }
+    .btn-info {
+      background-color: #dc3545;
+      border-color: #dc3545;
+      color: white;
+    }
+    .btn-info:hover {
+      background-color: #bb2d3b;
+      border-color: #bb2d3b;
+      color: white;
+    }
+    .btn-success {
+      background-color: #dc3545;
+      border-color: #dc3545;
+    }
+    .btn-success:hover {
+      background-color: #bb2d3b;
+      border-color: #bb2d3b;
+    }
+    .page-item.active .page-link {
+      background-color: #dc3545;
+      border-color: #dc3545;
+    }
+    .page-link {
+      color: #dc3545;
+    }
+    .page-link:hover {
+      color: #bb2d3b;
+    }
+    h2 {
+      color: #dc3545;
+    }
+    .table {
+      border-color: #dc3545;
+    }
+    .modal-header {
+      background-color: #dc3545;
+      color: white;
+    }
+    .modal-title {
+      color: white;
+    }
+    .form-control:focus {
+      border-color: #dc3545;
+      box-shadow: 0 0 0 0.25rem rgba(220,53,69,0.25);
     }
   </style>
 </head>
@@ -28,10 +82,9 @@
       <h2 class="text-center mb-4">Data Hasil Verifikasi Berkas SPMB</h2>
       
       <div class="row mb-3">
-        <div class="col-md-6">
-          <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan Nama/NISN/NIK...">
-        </div>
-        <div class="col-md-6 text-end">
+        <div class="col-md-12 text-end">
+          <a href="index.html" class="btn btn-primary me-2">Daftar Antri</a>
+          <a href="data.html" class="btn btn-info me-2">Kembali ke Data</a>
           <button class="btn btn-success" onclick="exportToExcel()">Export ke Excel</button>
         </div>
       </div>
@@ -125,6 +178,15 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-primary" onclick="updateData()">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="table-container">
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan Nama/NISN/NIK...">
         </div>
       </div>
     </div>
